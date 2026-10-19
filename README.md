@@ -163,5 +163,4 @@ In security, missing phishing (FN) usually costs more than a false alarm, so exp
 
 ## Legal and ethical note
 Use this only for learning and defence. Do not test it by sending phishing messages to real people, and do not visit live phishing URLs from your main computer.
-#   P h i s h i n g - U R L - E m a i l - D e t e c t o r  
- 
+#
