@@ -1,0 +1,30 @@
+{
+  "best": "RandomForest",
+  "results": {
+    "LogisticRegression": {
+      "precision": 0.7889908256880734,
+      "recall": 0.9320197044334976,
+      "f1": 0.8545618789521229,
+      "auc": 0.9298734666280305,
+      "false_positives": 253,
+      "false_negatives": 69
+    },
+    "RandomForest": {
+      "precision": 0.9278455284552846,
+      "recall": 0.8995073891625616,
+      "f1": 0.9134567283641821,
+      "auc": 0.9616957403651115,
+      "false_positives": 71,
+      "false_negatives": 102
+    },
+    "GradientBoosting": {
+      "precision": 0.9224572004028198,
+      "recall": 0.9024630541871921,
+      "f1": 0.9123505976095617,
+      "auc": 0.9561197720467498,
+      "false_positives": 77,
+      "false_negatives": 99
+    }
+  },
+  "data": "data/urls.csv"
+}

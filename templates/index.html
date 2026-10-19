@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phishing Detector</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --text:#1d2330; --muted:#667085; --line:#e2e5ea; --accent:#2f5fd0;
+          --ok:#1a7f4b; --warn:#b26a00; --bad:#c62828; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#12151b; --card:#1b2029; --text:#e7eaf0; --muted:#98a2b3; --line:#2b3240; --accent:#6c93f0;
+            --ok:#4cc38a; --warn:#f0a640; --bad:#ff6b6b; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+  main { max-width:760px; margin:0 auto; padding:28px 16px 48px; }
+  h1 { font-size:1.5rem; margin:0 0 4px; } p.sub { color:var(--muted); margin:0 0 20px; }
+  .tabs { display:flex; gap:8px; margin-bottom:12px; }
+  .tabs button { flex:1; padding:10px; border:1px solid var(--line); background:var(--card); color:var(--text);
+                 border-radius:8px; cursor:pointer; font-size:1rem; }
+  .tabs button.on { border-color:var(--accent); color:var(--accent); font-weight:600; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:18px; }
+  input[type=text], textarea { width:100%; padding:11px; border:1px solid var(--line); border-radius:8px;
+                               background:var(--bg); color:var(--text); font:inherit; }
+  textarea { min-height:190px; resize:vertical; }
+  .row { display:flex; gap:10px; margin-top:12px; align-items:center; flex-wrap:wrap; }
+  button.go { background:var(--accent); color:#fff; border:0; padding:10px 20px; border-radius:8px; font-size:1rem; cursor:pointer; }
+  button.go:disabled { opacity:.6; cursor:wait; }
+  .hint { color:var(--muted); font-size:.88rem; }
+  #result { margin-top:16px; display:none; }
+  .badge { display:inline-block; padding:4px 12px; border-radius:999px; font-weight:600; color:#fff; }
+  .bar { height:10px; border-radius:6px; background:var(--line); margin:12px 0 4px; overflow:hidden; }
+  .bar > div { height:100%; }
+  ul { padding-left:20px; margin:8px 0 0; } li { margin:4px 0; }
+  .note { margin-top:18px; font-size:.85rem; color:var(--muted); }
+  [hidden] { display:none !important; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Phishing Detector</h1>
+  <p class="sub">Paste a link or an email. Nothing is opened or visited: only the text is analysed.</p>
+
+  <div class="tabs">
+    <button id="tab-url" class="on" type="button">Check a URL</button>
+    <button id="tab-email" type="button">Check an email</button>
+  </div>
+
+  <div class="card">
+    <div id="pane-url">
+      <input id="url" type="text" placeholder="https://example.com/login" autocomplete="off" spellcheck="false">
+      <div class="row"><button class="go" id="go-url" type="button">Analyse URL</button>
+        <span class="hint">Tip: do NOT open suspicious links to test them.</span></div>
+    </div>
+    <div id="pane-email" hidden>
+      <textarea id="email" placeholder="Paste the full email here (headers help), or load a .eml file below"></textarea>
+      <div class="row"><button class="go" id="go-email" type="button">Analyse email</button>
+        <input id="file" type="file" accept=".eml,.txt"></div>
+    </div>
+    <div id="result">
+      <span class="badge" id="badge"></span>
+      <span id="pct" class="hint"></span>
+      <div class="bar"><div id="fill"></div></div>
+      <strong>Why:</strong>
+      <ul id="reasons"></ul>
+    </div>
+  </div>
+  <p class="note">This is a learning project. A result is an estimate, not proof: when in doubt, do not click and ask your IT/security team.</p>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const colors = {"Likely phishing":"var(--bad)", "Suspicious":"var(--warn)", "Likely safe":"var(--ok)"};
+function tab(which) {
+  $("pane-url").hidden = which !== "url"; $("pane-email").hidden = which !== "email";
+  $("tab-url").classList.toggle("on", which === "url"); $("tab-email").classList.toggle("on", which === "email");
+  $("result").style.display = "none";
+}
+$("tab-url").onclick = () => tab("url"); $("tab-email").onclick = () => tab("email");
+$("file").onchange = e => { const f = e.target.files[0]; if (f) f.text().then(t => $("email").value = t); };
+
+async function send(path, payload, btn) {
+  btn.disabled = true;
+  try {
+    const r = await fetch(path, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload)});
+    show(await r.json());
+  } catch (e) { show({error:"Could not reach the server."}); }
+  btn.disabled = false;
+}
+function show(d) {
+  const box = $("result"), list = $("reasons"); box.style.display = "block"; list.replaceChildren();
+  if (d.error) { $("badge").textContent = "Error"; $("badge").style.background = "var(--muted)";
+                 $("pct").textContent = ""; $("fill").style.width = "0"; add(d.error); return; }
+  const pct = Math.round(d.score * 100);
+  $("badge").textContent = d.verdict; $("badge").style.background = colors[d.verdict];
+  $("pct").textContent = " phishing probability: " + pct + "%";
+  $("fill").style.width = pct + "%"; $("fill").style.background = colors[d.verdict];
+  d.reasons.forEach(add);
+  function add(t) { const li = document.createElement("li"); li.textContent = t; list.appendChild(li); }  // textContent = no XSS
+}
+$("go-url").onclick = () => send("/api/url", {url:$("url").value}, $("go-url"));
+$("go-email").onclick = () => send("/api/email", {text:$("email").value}, $("go-email"));
+$("url").addEventListener("keydown", e => { if (e.key === "Enter") $("go-url").click(); });
+</script>
+</body>
+</html>
